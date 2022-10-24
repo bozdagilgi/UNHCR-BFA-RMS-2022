@@ -1,0 +1,204 @@
+###ETH RBM IDP Calculations###
+
+rm(list=ls()) # clear work space
+
+
+###Install Packages
+
+library(haven)
+library(tidyverse)
+library(readxl)
+library(srvyr)
+library(ggplot2)
+library(robotoolbox)
+library(labelled)
+library(remotes)
+library(dm)
+
+
+
+####BFA datasets
+
+library(haven)
+
+main_BFA <- read_dta("C:/Users/BOZDAG/OneDrive - UNHCR/Desktop/UNHCR/RBM/Tango datasets/UNHCR_BFA_HH_hhwt_Raw.dta")
+
+ind_BFA <- read_dta("C:/Users/BOZDAG/OneDrive - UNHCR/Desktop/UNHCR/RBM/Tango datasets/UNHCR_BFA_IND_Raw.dta")
+view(ind_BFA)
+
+
+table(main_BFA$pop_group) ###667 Refugee - 6 Refugee returnees - 704 IDPs 
+
+
+###Use weight variable hhwt_rrate for HHs
+
+
+###Calculate age groups for disaggregation for ind and main dataset
+
+###Turn into numeric
+
+ind_BFA$r03 <- as.numeric(ind_BFA$r03)
+
+ind_BFA$HH07_cat <- cut(ind_BFA$r03 , 
+                            breaks = c(-1, 4, 17, 59, Inf),
+                            labels = c("0-4", "5-17", "18-59", "60+"))
+ind_BFA$HH07_cat2 <- cut(ind_BFA$r03 , 
+                        breaks = c(-1, 17, Inf),
+                        labels = c("0-17", "18-60+"))
+
+
+###Label gender variable for individuals
+
+
+table(ind_BFA$r02)
+
+ind_BFA <- ind_BFA %>%
+  mutate(r02=labelled(r02,
+                      labels=c(
+                        "Male"=1,
+                        "Female"=2,
+                        "Other"=3
+                      ),
+                      label="Gender")) 
+
+
+###Calculate citizenship
+
+table(ind_BFA$ref01)
+
+ind_BFA <- ind_BFA %>%
+  mutate(citizenship=case_when(
+    ref01==1 ~ 'BFA',
+  ref02=='MLI' ~ 'MLI',
+  ref02=='NER' ~ 'NER')
+  )
+
+table((ind_BFA$citizenship))
+
+####Calculate disability ####NA values also turn 0 --> it Was only asked to above 18 
+
+
+ind_BFA$DIS01<- as.numeric(ind_BFA$dis01)
+ind_BFA$DIS02<- as.numeric(ind_BFA$dis02)
+ind_BFA$DIS03<- as.numeric(ind_BFA$dis03)
+ind_BFA$DIS04<- as.numeric(ind_BFA$dis04)
+ind_BFA$DIS05<- as.numeric(ind_BFA$dis05)
+ind_BFA$DIS06<- as.numeric(ind_BFA$dis06)
+
+ind_BFA <-  ind_BFA %>%
+  mutate( # disability identifier variables according to Washington Group standards
+    disaux1_234 = DIS01 %in% c("2","3","4"), # indicator variables for all 6 domains with value TRUE if SOME DIFFICULTY or A LOT OF DIFFICULTY or CANNOT DO AT ALL
+    disaux2_234 = DIS02 %in% c("2","3","4"),
+    disaux3_234 = DIS03 %in% c("2","3","4"),
+    disaux4_234 = DIS04 %in% c("2","3","4"),
+    disaux5_234 = DIS05 %in% c("2","3","4"),
+    disaux6_234 = DIS06 %in% c("2","3","4"),
+    
+    disaux1_34 = DIS01 %in% c("3","4"), # indicator variables for all 6 domains with value TRUE if A LOT OF DIFFICULTY or CANNOT DO AT ALL
+    disaux2_34 = DIS02 %in% c("3","4"),
+    disaux3_34 = DIS03 %in% c("3","4"),
+    disaux4_34 = DIS04 %in% c("3","4"),
+    disaux5_34 = DIS05 %in% c("3","4"),
+    disaux6_34 = DIS06 %in% c("3","4")
+  ) %>%
+  mutate(
+    disSum234 = rowSums(select(., disaux1_234, disaux2_234 , disaux3_234 , disaux4_234 , disaux5_234 , disaux6_234)), # count number of TRUE indicator variables over 6 domains
+    disSum34 = rowSums(select(., disaux1_34, disaux2_34 , disaux3_34 , disaux4_34 , disaux5_34 , disaux6_34)) # count number of TRUE indicator variables over 6 domains
+    
+  ) %>%
+  mutate(
+    DISABILITY1 = case_when( # : the level of inclusion is at least one domain/question is coded SOME DIFFICULTY or A LOT OF DIFFICULTY or CANNOT DO AT ALL.
+      disSum234 >= 1 ~ 1,
+      disSum234 == 0 & (!(DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99"))) ~ 0,
+      DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99") ~ 98
+    )
+  ) %>%
+  mutate(
+    DISABILITY2 = case_when( # : the level of inclusion is at least two domains/questions are coded SOME DIFFICULTY or A LOT OF DIFFICULTY or CANNOT DO AT ALL or any 1 domain/question is coded A LOT OF DIFFICULTY or CANNOT DO AT ALL
+      disSum234 >= 2 | disSum34 >=1  ~ 1,
+      disSum234 < 2 & disSum34 == 0 & (!(DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99"))) ~ 0,
+      DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99") ~ 98
+    )
+  ) %>%
+  mutate(
+    DISABILITY3 = case_when( # : the level of inclusion is at least one domain/question is coded A LOT OF DIFFICULTY or CANNOT DO AT ALL.
+      disSum34 >= 1 ~ 1,
+      disSum34 == 0 & (!(DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99"))) ~ 0,
+      DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99") ~ 98
+    )
+  ) %>%
+  mutate(
+    DISABILITY4 = case_when( # : the level of inclusion is at least one domain/question is coded CANNOT DO AT ALL.
+      DIS01=="4" | DIS02=="4" | DIS03=="4" | DIS04=="4" | DIS05=="4" | DIS06=="4" ~ 1,
+      !(DIS01=="4" | DIS02=="4" | DIS03=="4" | DIS04=="4" | DIS05=="4" | DIS06=="4") & (!(DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99"))) ~ 0,
+      DIS01 %in% c("98","99") & DIS02 %in% c("98","99") & DIS03 %in% c("98","99") & DIS04 %in% c("98","99") & DIS05 %in% c("98","99") & DIS06 %in% c("98","99") ~ 98
+    )
+  ) %>%
+  mutate(
+    DISABILITY1 = labelled(DISABILITY1,
+                           labels = c(
+                             "Without disability" = 0,
+                             "With disability" = 1,
+                             "Unknown" = 98
+                           ),
+                           label = "Washington Group disability identifier 1"),
+    DISABILITY2 = labelled(DISABILITY2,
+                           labels = c(
+                             "Without disability" = 0,
+                             "With disability" = 1,
+                             "Unknown" = 98
+                           ),
+                           label = "Washington Group disability identifier 2"),
+    DISABILITY3 = labelled(DISABILITY3,
+                           labels = c(
+                             "Without disability" = 0,
+                             "With disability" = 1,
+                             "Unknown" = 98
+                           ),
+                           label = "Washington Group disability identifier 3"),
+    DISABILITY4 = labelled(DISABILITY4,
+                           labels = c(
+                             "Without disability" = 0,
+                             "With disability" = 1,
+                             "Unknown" = 98
+                           ),
+                           label = "Washington Group disability identifier 4"))
+###Calculate having at least one disability identifier among 4 categories 
+ind_BFA<- ind_BFA %>%
+  mutate(disab=
+           case_when(DISABILITY1==1 | DISABILITY2==1 | DISABILITY3==1 | DISABILITY4==1 ~ 1, 
+                     DISABILITY1==0 | DISABILITY2==0 | DISABILITY3==0 | DISABILITY4==0 ~ 0,
+                     TRUE ~ NA_real_)
+  ) %>%
+  mutate(disab = labelled(disab,
+                          labels = c(
+                            "Without disability" = 0,
+                            "With disability" = 1)
+  ))
+
+
+#####Merge individual datasets
+
+###Create similar variable names for merging with the individual dataset ( FOR RANDOMLY SELECTED ADULT DEMO)
+
+main_BFA$r01 <- main_BFA$sampled_
+
+##Select indicators for merge
+
+ind_m <- ind_BFA %>%
+  select("hhid", "HH07_cat", "disab", "HH07_cat2", "citizenship","r01", "r02", "mem") ##ADD VARIABLES FOR MERGING
+main_BFA <- merge(ind_m, main_BFA, by=c("r01", "hhid"))
+
+rm(ind_m)
+
+## Import HH level variables from individual dataset
+
+main_m <- main_BFA %>%
+  select("hhid", "hhwt_rrate", "pop_group") ## ADD VARIABLES FOR MERGING
+
+ind_BFA <- merge(main_m, ind_BFA, by = "hhid")
+
+rm(main_m)
+
+
+
