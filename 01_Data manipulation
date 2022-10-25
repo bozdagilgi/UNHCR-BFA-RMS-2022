@@ -1,8 +1,3 @@
-###ETH RBM IDP Calculations###
-
-rm(list=ls()) # clear work space
-
-
 ###Install Packages
 
 library(haven)
@@ -186,7 +181,7 @@ main_BFA$r01 <- main_BFA$sampled_
 ##Select indicators for merge
 
 ind_m <- ind_BFA %>%
-  select("hhid", "HH07_cat", "disab", "HH07_cat2", "citizenship","r01", "r02", "mem") ##ADD VARIABLES FOR MERGING
+  select("hhid", "HH07_cat", "disab", "HH07_cat2", "citizenship","r01", "r02", "mem", "r03") ##ADD VARIABLES FOR MERGING
 main_BFA <- merge(ind_m, main_BFA, by=c("r01", "hhid"))
 
 rm(ind_m)
@@ -201,4 +196,6 @@ ind_BFA <- merge(main_m, ind_BFA, by = "hhid")
 rm(main_m)
 
 
+names(ind_BFA) <- toupper(names(ind_BFA))
+names(main_BFA) <- toupper(names(main_BFA))
 
