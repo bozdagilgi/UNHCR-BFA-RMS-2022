@@ -32,7 +32,7 @@ main_BFA <- main_BFA %>%
 
 main_BFA <- main_BFA %>%
   
-  mutate(crowding=DWE05/mem
+  mutate(crowding=DWE05/MEM
   ) %>%
   mutate(dwe05_cat=case_when( ##if crowding < 3 
     crowding < 3 ~ 1, TRUE ~ 0)
@@ -85,9 +85,9 @@ main_BFA <- main_BFA %>%
 main_BFA <- main_BFA %>%
   
   mutate(time_DWA=case_when(
-    DWA03a==1~1, DWA03a==2~60)
+    DWA03A==1~1, DWA03B==2~60)
   ) %>%
-  mutate(time_tot=time_DWA*DWA03b
+  mutate(time_tot=time_DWA*DWA03B
   ) %>%
   mutate(dwa_cond1=case_when( time_tot > 30 ~ 0, TRUE ~ 1) ##Accessible under 30 minutes
   ) %>%
@@ -193,4 +193,3 @@ main_BFA <- main_BFA %>%
                             label="PoC feeling safe walking alone"))
 
 table(main_BFA$impact3_3)
-
