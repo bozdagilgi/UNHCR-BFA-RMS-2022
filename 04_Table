@@ -1,0 +1,29 @@
+###Create table for RBM indicators 
+
+
+###Weight variable is called HHWT_RRATE
+
+
+RBM_BFAmain = main_BFA %>% 
+  cross_cpct(
+    cell_vars = list(impact2_2, impact2_3, impact3_3, outcome4_1, outcome4_2, outcome8_2,
+                     outcome9_1, outcome9_2, outcome10_2, outcome12_1, outcome12_2, outcome13_1,
+                     outcome13_2, outcome13_3, outcome16_1, outcome16_2),
+    col_vars = list(total(), HH07_CAT2, DISAB, R02 ,POP_GROUP),
+    weight = HHWT_RRATE) %>% 
+  set_caption("RBM Indicators from household dataset")
+
+
+RBM_BFAindividual=ind_BFA %>%
+  cross_cpct(
+    cell_vars = list(outcome1_2, outcome1_3, outcome5_2, outcome10_1),
+    col_vars = list(total(), HH07_CAT2, DISAB, R02 ,POP_GROUP),
+    weight = HHWT_RRATE) %>% 
+  set_caption("RBM Indicators from individual dataset")
+
+
+### EXPORT TO EXCEL
+
+
+write.xlsx(RBM_BFAmain, "main_RBM_BFA.xlsx", colNames = TRUE, rowNames=TRUE)
+write.xlsx(RBM_BFAindividual, "ind_RBM_BFA.xlsx", colNames = TRUE, rowNames=TRUE)
