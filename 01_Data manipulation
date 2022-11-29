@@ -1,3 +1,8 @@
+###ETH RBM IDP Calculations###
+
+rm(list=ls()) # clear work space
+
+
 ###Install Packages
 
 library(haven)
@@ -172,6 +177,24 @@ ind_BFA<- ind_BFA %>%
   ))
 
 
+
+###Clean refugee returness and turn them into refugees 
+main_BFA <- main_BFA %>%
+  mutate(pop_group=case_when( ##Turn all refugee returnees into refugees
+    ( pop_group==4 | pop_group==2 ~ 2 ), pop_group==5 ~ 5)
+  ) %>%
+  mutate(pop_group=labelled(pop_group,
+                            labels =c(
+                              "Refugees"=1,
+                              "IDPs"=0
+                            ),
+                            label="Population group"))
+
+
+table(main_BFA$pop_group)
+
+
+
 #####Merge individual datasets
 
 ###Create similar variable names for merging with the individual dataset ( FOR RANDOMLY SELECTED ADULT DEMO)
@@ -198,4 +221,9 @@ rm(main_m)
 
 names(ind_BFA) <- toupper(names(ind_BFA))
 names(main_BFA) <- toupper(names(main_BFA))
+
+###check pop groups
+
+table(ind_BFA$POP_GROUP)
+
 
