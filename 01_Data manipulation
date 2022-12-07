@@ -1,4 +1,4 @@
-###ETH RBM IDP Calculations###
+####BFA RAS/IDP Calculations###
 
 rm(list=ls()) # clear work space
 
@@ -14,20 +14,26 @@ library(robotoolbox)
 library(labelled)
 library(remotes)
 library(dm)
-
-
+library(janitor)
+library(foreign)
+library(readstata13)
+library(writexl)
 
 ####BFA datasets
 
 library(haven)
 
-main_BFA <- read_dta("C:/Users/BOZDAG/OneDrive - UNHCR/Desktop/UNHCR/RBM/Tango datasets/UNHCR_BFA_HH_hhwt_Raw.dta")
+main_BFA <- read_dta("C:\Users\BOZDAG\OneDrive - UNHCR\Desktop\UNHCR\RBM\Tango datasets\Final Tango\UNHCR_BFA_IDP_RAS_HH_IND_10142022\UNHCR_BFA_IDP_RAS_IND_10142022.dta")
 
-ind_BFA <- read_dta("C:/Users/BOZDAG/OneDrive - UNHCR/Desktop/UNHCR/RBM/Tango datasets/UNHCR_BFA_IND_Raw.dta")
+ind_BFA <- read_dta("C:\Users\BOZDAG\OneDrive - UNHCR\Desktop\UNHCR\RBM\Tango datasets\Final Tango\UNHCR_BFA_IDP_RAS_HH_IND_10142022\UNHCR_BFA_IDP_RAS_IND_10142022.dta")
 view(ind_BFA)
 
+main_BFA = clean_names(main_BFA)
+ind_BFA = clean_names(ind_BFA)
 
-table(main_BFA$pop_group) ###667 Refugee - 6 Refugee returnees - 704 IDPs 
+
+
+table(main_BFA$pop_group) ###667 Refugee - 6 Refugee returnees - 706 IDPs 
 
 
 ###Use weight variable hhwt_rrate for HHs
@@ -44,23 +50,12 @@ ind_BFA$HH07_cat <- cut(ind_BFA$r03 ,
                             labels = c("0-4", "5-17", "18-59", "60+"))
 ind_BFA$HH07_cat2 <- cut(ind_BFA$r03 , 
                         breaks = c(-1, 17, Inf),
-                        labels = c("0-17", "18-60+"))
+                        labels = c("0-17", "18-over"))
 
 
 ###Label gender variable for individuals
 
-
 table(ind_BFA$r02)
-
-ind_BFA <- ind_BFA %>%
-  mutate(r02=labelled(r02,
-                      labels=c(
-                        "Male"=1,
-                        "Female"=2,
-                        "Other"=3
-                      ),
-                      label="Gender")) 
-
 
 ###Calculate citizenship
 
@@ -177,6 +172,9 @@ ind_BFA<- ind_BFA %>%
   ))
 
 
+#Remove auxiliary variables
+ind_BFA = select(ind_BFA, -c(101:120))
+
 
 ###Clean refugee returness and turn them into refugees 
 main_BFA <- main_BFA %>%
@@ -199,31 +197,46 @@ table(main_BFA$pop_group)
 
 ###Create similar variable names for merging with the individual dataset ( FOR RANDOMLY SELECTED ADULT DEMO)
 
-main_BFA$r01 <- main_BFA$sampled_
+main_BFA$r01 <- main_BFA$sampled_adult
+
+ind_BFA$a_index = ind_BFA$parent_index
 
 ##Select indicators for merge
 
 ind_m <- ind_BFA %>%
-  select("hhid", "HH07_cat", "disab", "HH07_cat2", "citizenship","r01", "r02", "mem", "r03") ##ADD VARIABLES FOR MERGING
-main_BFA <- merge(ind_m, main_BFA, by=c("r01", "hhid"))
+  select("a_index", "HH07_cat", "disab", "HH07_cat2", "citizenship","r01", "r02", "mem", "r03") ##ADD VARIABLES FOR MERGING
+main_BFA <- merge(ind_m, main_BFA, by=c("a_index", "r01"))
 
 rm(ind_m)
 
 ## Import HH level variables from individual dataset
 
 main_m <- main_BFA %>%
-  select("hhid", "hhwt_rrate", "pop_group") ## ADD VARIABLES FOR MERGING
+  select("a_index", "hhwt_rrate", "pop_group") ## ADD VARIABLES FOR MERGING
 
-ind_BFA <- merge(main_m, ind_BFA, by = "hhid")
+ind_BFA <- merge(main_m, ind_BFA, by = "a_index")
 
 rm(main_m)
 
 
-names(ind_BFA) <- toupper(names(ind_BFA))
-names(main_BFA) <- toupper(names(main_BFA))
+#names(ind_BFA) <- toupper(names(ind_BFA))
+#names(main_BFA) <- toupper(names(main_BFA))
 
 ###check pop groups
 
-table(ind_BFA$POP_GROUP)
+table(ind_BFA$pop_group)
+table(main_BFA$pop_group)
 
+### Write full files
+write_dta(ind_BFA, "0_data/ind_BFA_indicators_v2.dta", version = 11, label = attr(data, "label"))
+
+write_labelled_csv(ind_BFA, "0_data/ind_BFA_indicators_v2.xlsx")
+
+saveRDS(ind_BFA, "0_data/ind_BFA_indicators_v2.RDS")
+
+write_dta(main_BFA, "0_data/hh_BFA_indicators_v2.dta", version = 11, label = attr(data, "label"))
+
+write_xlsx(main_BFA, "0_data/hh_BFA_indicators_v2.xlsx")
+
+saveRDS(main_BFA, "0_data/hh_BFA_indicators_v2.RDS")
 
