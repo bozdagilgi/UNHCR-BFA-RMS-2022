@@ -32,10 +32,10 @@ main_BFA <- main_BFA %>%
 
 main_BFA <- main_BFA %>%
   
-  mutate(crowding=DWE05/MEM
+  mutate(crowding=MEM/DWE05
   ) %>%
-  mutate(dwe05_cat=case_when( ##if crowding < 3 
-    crowding < 3 ~ 1, TRUE ~ 0)
+  mutate(dwe05_cat=case_when( ##if crowding <= 3 
+    crowding <= 3 ~ 1, TRUE ~ 0)
   )
 
 
@@ -66,8 +66,7 @@ table(main_BFA$shelter)
 
 main_BFA <- main_BFA %>% 
   mutate(electricity=
-           case_when(LIGHT01==1 & (LIGHT02==1 |LIGHT02==3 | LIGHT02==5 | LIGHT02==6 
-                                       | LIGHT02==7 ) & 
+           case_when(LIGHT01==1 & 
                        (LIGHT03!=0 | LIGHT03!=96 | LIGHT03!=98 ) ~ 1,
                      TRUE ~ 0)
   ) %>%
@@ -93,11 +92,9 @@ main_BFA <- main_BFA %>%
   ) %>%
   mutate(dwa_cond2=case_when(DWA01!=7 |DWA01!=9 |DWA01!= 13 | DWA01 != 96 |DWA01 !=98 ~ 1,
                              TRUE ~ 0) ## protected source
-  ) %>%
-  mutate(dwa_cond3=case_when(DWA04==1 ~ 0, TRUE ~ 1) ## drinking water was available in the last 30 days
-  ) %>%
+  )  %>%
   mutate(drinkingwater=case_when(
-    (dwa_cond1==1 & dwa_cond2==1 & dwa_cond3==1) ~ 1, TRUE ~ 0)
+    (dwa_cond1==1 & dwa_cond2==1) ~ 1, TRUE ~ 0)
   ) %>%
   mutate(drinkingwater = labelled(drinkingwater,
                                   labels = c(
@@ -183,7 +180,7 @@ table(main_BFA$impact2_3)
 main_BFA <- main_BFA %>%
   mutate(impact3_3=case_when(
     SAF01==1 | SAF01==2 ~ 1,
-    SAF01==3 | SAF01==4 | SAF01==98 ~ 0, SAF01==99 | SAF01==97~ NA_real_)
+    SAF01==3 | SAF01==4 ~ 0 , (SAF01==98 | SAF01==99 | SAF01==97) ~ NA_real_)
   ) %>% 
   mutate(impact3_3=labelled(impact3_3,
                             labels =c(
@@ -193,3 +190,4 @@ main_BFA <- main_BFA %>%
                             label="PoC feeling safe walking alone"))
 
 table(main_BFA$impact3_3)
+
