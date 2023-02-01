@@ -118,6 +118,7 @@ main_BFA <- main_BFA %>%
                              label="Poc who know where to access available GBV services"
   ))
 
+table(main_BFA$outcome4_1)
 
 ###4.2 Proportion of PoC who do not accept violence against women
 ##Module :VAW01
@@ -127,8 +128,7 @@ main_BFA <- main_BFA %>%
 main_BFA <- main_BFA %>%
   mutate(outcome4_2=case_when(
     VAW01A==1 | VAW01B==1 |  VAW01C==1 |  VAW01D==1 | VAW01E==1 ~ 0,
-    (VAW01A==2 | VAW01A==99 ) & (VAW01B==2 | VAW01B==99 ) &
-      (VAW01C==2 | VAW01C==99 ) & (VAW01D==2 | VAW01D==99 ) & (VAW01E==2 | VAW01E==99 ) ~ 1,
+    VAW01A==2 & VAW01B==2 & VAW01C==2  & VAW01D==2  & VAW01E==2 ~ 1,
     TRUE ~ NA_real_)
   ) %>%
   mutate(outcome4_2=labelled(outcome4_2,
@@ -137,7 +137,9 @@ main_BFA <- main_BFA %>%
                                "No"=0
                              ),
                              label="Poc who do not accept violence against women"
-  ))
+  )) 
+
+table(main_BFA$outcome4_2)
 
 ###5.2 Proportion of children who participate in community-based child protection programmes
 ##Module :COMM01-COMM04
@@ -216,12 +218,11 @@ main_BFA <- main_BFA %>%
 
 main_BFA <- main_BFA %>%
   
-  mutate(crowding=DWE05/MEM
+  mutate(crowding=MEM/DWE05
   ) %>%
-  mutate(dwe05_cat=case_when( ##if crowding < 3 
-    crowding < 3 ~ 1, TRUE ~ 0)
+  mutate(dwe05_cat=case_when( ##if crowding <= 3 
+    crowding <= 3 ~ 1, TRUE ~ 0)
   )
-
 
 ####Combine all shelter indicators 
 
@@ -326,11 +327,9 @@ main_BFA <- main_BFA %>%
   ) %>%
   mutate(dwa_cond2=case_when(DWA01!=7 |DWA01!=9 |DWA01!= 13 | DWA01 != 96 |DWA01 !=98 ~ 1,
                              TRUE ~ 0) ## protected source
-  ) %>%
-  mutate(dwa_cond3=case_when(DWA04==1 ~ 0, TRUE ~ 1) ## drinking water was available in the last 30 days
-  ) %>%
+  )  %>%
   mutate(outcome12_1=case_when(
-    (dwa_cond1==1 & dwa_cond2==1 & dwa_cond3==1) ~ 1, TRUE ~ 0)
+    (dwa_cond1==1 & dwa_cond2==1 ) ~ 1, TRUE ~ 0)
   ) %>%
   mutate(outcome12_1 = labelled(outcome12_1,
                                   labels = c(
